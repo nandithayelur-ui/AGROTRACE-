@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # QpiAI Quantum SDK
 
 A comprehensive quantum computing framework with modular implementations, built for researchers, educators, and quantum application developers.
@@ -293,3 +294,7 @@ If you use the QpiAI Quantum SDK in your research, please cite it as follows:
 ---
 
 **Copyright © 2026 QpiAI. All rights reserved.**
+=======
+# AGROTRACE-
+AGROTRACE :VERIFIABLE AGRICULTURAL procurement platform 
+>>>>>>> 48eed0e5197cdd2f5e04b5bb2e9c801306e05614
