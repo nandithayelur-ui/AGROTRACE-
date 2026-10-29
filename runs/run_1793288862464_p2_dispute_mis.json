@@ -1,0 +1,35 @@
+{
+  "run_id": "run_1793288862464_p2_dispute_mis",
+  "timestamp": "2026-10-29T15:47:42.464829+00:00",
+  "problem_type": "P2_DISPUTE_MIS",
+  "n_vars": 13,
+  "solver": "QpiAIOptSolver_MIS",
+  "mode": "error",
+  "sdk_versions": {
+    "qpiai_opt": "detected"
+  },
+  "seed": 42,
+  "params": {},
+  "job_id": "local_run_1793288862464_p2_dispute_mis",
+  "input_hash": "cfacce3a7ed92c1a3b569d0715612ee8c3d3eecd88695a16a0c47d0a79d1e2c8",
+  "request_summary": {
+    "n_claims": 13,
+    "n_conflicts": 10
+  },
+  "raw_output": null,
+  "raw_error": {
+    "code": "SERVER",
+    "http_status": 500,
+    "service": "opt",
+    "message": "QpiAI server error (RuntimeError): QpiAI Opt is not adapted yet. Install qpiai-opt in this environment, run scripts/probe_qpiai.py, then bind its verified MIS/MVC or QUBO method.",
+    "hint": "Inspect SDK call payload"
+  },
+  "decoded_solution": {},
+  "objective": 0.0,
+  "feasible": false,
+  "violations": [
+    "No verified QpiAI Opt result was returned."
+  ],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 1500.5859000000328
+}

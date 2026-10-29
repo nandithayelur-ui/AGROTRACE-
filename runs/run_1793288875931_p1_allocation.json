@@ -1,0 +1,37 @@
+{
+  "run_id": "run_1793288875931_p1_allocation",
+  "timestamp": "2026-10-29T15:47:55.931862+00:00",
+  "problem_type": "P1_ALLOCATION",
+  "n_vars": 30,
+  "solver": "AnnealSolver_Neal",
+  "mode": "fallback_local",
+  "sdk_versions": {
+    "neal": "0.6.0"
+  },
+  "seed": 42,
+  "params": {
+    "num_reads": 100
+  },
+  "job_id": "local_run_1793288875931_p1_allocation",
+  "input_hash": "8654dd70d36ba2e4b21d939af66d6b1a3f46c9bb8ae5b646816e2157baaa636f",
+  "request_summary": {
+    "n_vars": 30,
+    "n_lots": 10,
+    "n_contracts": 3,
+    "penalty_weight": 10000.0
+  },
+  "raw_output": {
+    "energy": -5.820766091346741e-11
+  },
+  "raw_error": null,
+  "decoded_solution": {
+    "1": {},
+    "2": {},
+    "3": {}
+  },
+  "objective": -5.820766091346741e-11,
+  "feasible": false,
+  "violations": [],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 29.193500000019412
+}

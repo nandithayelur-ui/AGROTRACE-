@@ -1,0 +1,71 @@
+{
+  "note": "Demo CIDs are hash-derived placeholders, not real IPFS pins.",
+  "commitAllocation": {
+    "args": {
+      "allocation_hash": "229c03fafc9ec85bcb5002428d624fdd1d3c85b901bcd94736fa8f741ab665b0",
+      "solver_run_cid": "bafybei-demo-229c03fafc9ec85b",
+      "lot_ids": [
+        "LOT-2026-097",
+        "LOT-2026-098",
+        "LOT-2026-100",
+        "LOT-2026-101",
+        "LOT-2026-102"
+      ],
+      "contract_ids": [
+        "C-211",
+        "C-213",
+        "C-211",
+        "C-213",
+        "C-212"
+      ]
+    },
+    "expected_verification": {
+      "mass_balance": true,
+      "lineage": true,
+      "grade": true,
+      "result": "COMMIT_OK"
+    }
+  },
+  "commitAllocation_bad": {
+    "args": {
+      "lot_ids": [
+        "LOT-2026-100",
+        "LOT-2026-100"
+      ],
+      "contract_ids": [
+        "C-211",
+        "C-212"
+      ]
+    },
+    "expected_verification": {
+      "result": "REVERT",
+      "reason": "LOT_OVER_ASSIGNED"
+    }
+  },
+  "resolveDispute": {
+    "args": {
+      "rejected_claim_ids": [
+        "CLM-001",
+        "CLM-002",
+        "CLM-005",
+        "CLM-008",
+        "CLM-009",
+        "CLM-011"
+      ],
+      "approved_claim_ids": [
+        "CLM-003",
+        "CLM-004",
+        "CLM-006",
+        "CLM-007",
+        "CLM-010",
+        "CLM-012",
+        "CLM-013"
+      ],
+      "solver_run_cid": "bafybei-demo-19e7c9c2c99213a0"
+    },
+    "expected_verification": {
+      "result": "RESOLVED",
+      "double_payment_possible": false
+    }
+  }
+}

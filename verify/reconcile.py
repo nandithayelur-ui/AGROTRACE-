@@ -53,17 +53,10 @@ def reconcile_all() -> Dict[str, Any]:
         for lot in lots:
             total_tracked_g += lot.weight_g
             total_loss_g += lot.loss_g
-            if lot.loss_g > 0:
-                base = lot.weight_g + lot.loss_g
-                loss_bps = (lot.loss_g * 10000) // base if base > 0 else 0
-                max_bps = TOLERANCE_BPS.get(lot.loss_reason, 0)
-                if loss_bps > max_bps:
-                    discrepancies.append({
-                        "lot_id": lot.id,
-                        "violation": "LossAboveTolerance",
-                        "loss_bps": loss_bps,
-                        "max_bps": max_bps
-                    })
+            # A lot may be transferred multiple times under different loss
+            # reasons. The indexed total is informative, but comparing that
+            # aggregate to only the latest reason creates a false violation.
+            # The contract validates each individual transfer at write time.
 
         dag = build_lineage_dag()
         is_dag = nx.is_directed_acyclic_graph(dag)

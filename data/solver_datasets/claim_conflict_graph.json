@@ -1,0 +1,196 @@
+{
+  "description": "Nodes=claims weighted by amount_paise; edges=conflicts. MIS = max-value mutually compatible claims to APPROVE; MVC (complement) = claims to REJECT.",
+  "claims": [
+    {
+      "id": "CLM-001",
+      "lot_id": "LOT-2026-104",
+      "invoice_id": "INV-9001",
+      "claimant_id": "U-WH1",
+      "claimed_kg": 598,
+      "claim_type": "FULL",
+      "amount_paise": 1624400
+    },
+    {
+      "id": "CLM-002",
+      "lot_id": "LOT-2026-104",
+      "invoice_id": "INV-9101",
+      "claimant_id": "U-SURESH",
+      "claimed_kg": 598,
+      "claim_type": "FULL",
+      "amount_paise": 1624400
+    },
+    {
+      "id": "CLM-003",
+      "lot_id": "LOT-2026-084",
+      "invoice_id": "INV-9103",
+      "claimant_id": "U-WH1",
+      "claimed_kg": 600,
+      "claim_type": "FULL",
+      "amount_paise": 1680000
+    },
+    {
+      "id": "CLM-004",
+      "lot_id": "LOT-2026-105",
+      "invoice_id": "INV-9002",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 495,
+      "claim_type": "FULL",
+      "amount_paise": 1483000
+    },
+    {
+      "id": "CLM-005",
+      "lot_id": "LOT-2026-100",
+      "invoice_id": "INV-9001",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 700,
+      "claim_type": "FULL",
+      "amount_paise": 1995000
+    },
+    {
+      "id": "CLM-006",
+      "lot_id": "LOT-2026-095",
+      "invoice_id": "INV-9201",
+      "claimant_id": "U-SURESH",
+      "claimed_kg": 1982,
+      "claim_type": "FULL",
+      "amount_paise": 5366265
+    },
+    {
+      "id": "CLM-007",
+      "lot_id": "LOT-2026-102",
+      "invoice_id": "INV-9202",
+      "claimant_id": "U-WH1",
+      "claimed_kg": 600,
+      "claim_type": "PARTIAL",
+      "amount_paise": 1681500
+    },
+    {
+      "id": "CLM-008",
+      "lot_id": "LOT-2026-102",
+      "invoice_id": "INV-9203",
+      "claimant_id": "U-SURESH",
+      "claimed_kg": 600,
+      "claim_type": "PARTIAL",
+      "amount_paise": 1681500
+    },
+    {
+      "id": "CLM-009",
+      "lot_id": "LOT-2026-101",
+      "invoice_id": "INV-9204",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 472,
+      "claim_type": "FULL",
+      "amount_paise": 934560
+    },
+    {
+      "id": "CLM-010",
+      "lot_id": "LOT-2026-097",
+      "invoice_id": "INV-9205",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 500,
+      "claim_type": "FULL",
+      "amount_paise": 1425000
+    },
+    {
+      "id": "CLM-011",
+      "lot_id": "LOT-2026-094",
+      "invoice_id": "INV-9206",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 1470,
+      "claim_type": "FULL",
+      "amount_paise": 4116000
+    },
+    {
+      "id": "CLM-012",
+      "lot_id": "LOT-2026-098",
+      "invoice_id": "INV-9207",
+      "claimant_id": "U-WH2",
+      "claimed_kg": 465,
+      "claim_type": "FULL",
+      "amount_paise": 1303162
+    },
+    {
+      "id": "CLM-013",
+      "lot_id": "LOT-2026-107",
+      "invoice_id": "INV-9003",
+      "claimant_id": "U-NANDI",
+      "claimed_kg": 383,
+      "claim_type": "FULL",
+      "amount_paise": 1066700
+    }
+  ],
+  "edges": [
+    {
+      "a": "CLM-001",
+      "b": "CLM-002",
+      "type": "SAME_LOT"
+    },
+    {
+      "a": "CLM-001",
+      "b": "CLM-003",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-001",
+      "b": "CLM-005",
+      "type": "SAME_INVOICE"
+    },
+    {
+      "a": "CLM-002",
+      "b": "CLM-003",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-004",
+      "b": "CLM-011",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-005",
+      "b": "CLM-006",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-006",
+      "b": "CLM-009",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-007",
+      "b": "CLM-008",
+      "type": "OVER_QUANTITY"
+    },
+    {
+      "a": "CLM-010",
+      "b": "CLM-011",
+      "type": "ANCESTOR_DESCENDANT"
+    },
+    {
+      "a": "CLM-011",
+      "b": "CLM-012",
+      "type": "ANCESTOR_DESCENDANT"
+    }
+  ],
+  "reference_exact_solution": {
+    "approve_mis": [
+      "CLM-003",
+      "CLM-004",
+      "CLM-006",
+      "CLM-007",
+      "CLM-010",
+      "CLM-012",
+      "CLM-013"
+    ],
+    "reject_mvc": [
+      "CLM-001",
+      "CLM-002",
+      "CLM-005",
+      "CLM-008",
+      "CLM-009",
+      "CLM-011"
+    ],
+    "approved_value_paise": 14005627,
+    "rejected_value_paise": 11975860,
+    "total_claimed_paise": 25981487
+  }
+}

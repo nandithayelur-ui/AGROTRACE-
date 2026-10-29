@@ -1,0 +1,129 @@
+[
+  {
+    "name": "valid_reference_optimum",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-097",
+        "contract_id": "C-211"
+      },
+      {
+        "lot_id": "LOT-2026-098",
+        "contract_id": "C-213"
+      },
+      {
+        "lot_id": "LOT-2026-100",
+        "contract_id": "C-211"
+      },
+      {
+        "lot_id": "LOT-2026-101",
+        "contract_id": "C-213"
+      },
+      {
+        "lot_id": "LOT-2026-102",
+        "contract_id": "C-212"
+      }
+    ],
+    "expected": {
+      "feasible": true,
+      "violations": []
+    }
+  },
+  {
+    "name": "lot_over_assigned",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-100",
+        "contract_id": "C-211"
+      },
+      {
+        "lot_id": "LOT-2026-100",
+        "contract_id": "C-212"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "LOT_OVER_ASSIGNED:LOT-2026-100"
+      ]
+    }
+  },
+  {
+    "name": "grade_below_minimum",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-101",
+        "contract_id": "C-212"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "GRADE_BELOW_MINIMUM:LOT-2026-101->C-212"
+      ]
+    }
+  },
+  {
+    "name": "capacity_exceeded",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-102",
+        "contract_id": "C-212"
+      },
+      {
+        "lot_id": "LOT-2026-098",
+        "contract_id": "C-212"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "CAPACITY_EXCEEDED:C-212 (1465>1000)"
+      ]
+    }
+  },
+  {
+    "name": "unverified_lot_no_attestation",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-103",
+        "contract_id": "C-213"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "UNVERIFIED_LOT:LOT-2026-103"
+      ]
+    }
+  },
+  {
+    "name": "lot_already_consumed_by_split",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-095",
+        "contract_id": "C-213"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "LOT_NOT_AVAILABLE:LOT-2026-095"
+      ]
+    }
+  },
+  {
+    "name": "unknown_lot",
+    "allocation": [
+      {
+        "lot_id": "LOT-2026-777",
+        "contract_id": "C-213"
+      }
+    ],
+    "expected": {
+      "feasible": false,
+      "violations": [
+        "UNKNOWN_LOT:LOT-2026-777"
+      ]
+    }
+  }
+]

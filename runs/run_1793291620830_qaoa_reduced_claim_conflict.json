@@ -1,0 +1,40 @@
+{
+  "run_id": "run_1793291620830_qaoa_reduced_claim_conflict",
+  "timestamp": "2026-10-29T16:33:40.830039+00:00",
+  "problem_type": "QAOA_REDUCED_CLAIM_CONFLICT",
+  "n_vars": 10,
+  "solver": "QpiAI_QCloud_QAOA",
+  "mode": "error",
+  "sdk_versions": {
+    "qpiai_quantum": "0.7.5"
+  },
+  "seed": 42,
+  "params": {
+    "p_steps": 1,
+    "shots": 1024
+  },
+  "job_id": "local_run_1793291620830_qaoa_reduced_claim_conflict",
+  "input_hash": "5735dd32e1188bd08aa9a9210ec0d4bade12ad3beaca07ad50722076aaad9e0a",
+  "request_summary": {
+    "problem": "reduced_claim_conflict_qubo",
+    "n_vars": 10,
+    "p_steps": 1,
+    "shots": 1024
+  },
+  "raw_output": null,
+  "raw_error": {
+    "code": "SERVER",
+    "http_status": 500,
+    "service": "qcloud",
+    "message": "QpiAI server error (JobManagerError): Error during QASM job submission: Experiment 'AgroTrace reduced claim-conflict QAOA' not found. Please create the experiment first.",
+    "hint": "Inspect SDK call payload"
+  },
+  "decoded_solution": {},
+  "objective": 0.0,
+  "feasible": false,
+  "violations": [
+    "No verified QCloud QAOA result was returned."
+  ],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 2849.497600000177
+}

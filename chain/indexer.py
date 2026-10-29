@@ -63,6 +63,13 @@ class EventIndexer:
         Base.metadata.create_all(bind=engine)
 
     def sync_events(self, from_block: int = 0) -> int:
+        """Rebuild the local read model from current on-chain state.
+
+        This demo indexer is intentionally small, so a full replay is safer
+        than an incremental cursor: the contract's public getters are the
+        source of truth for mutable lot fields. In particular, it prevents a
+        browser refresh from adding the same transfer loss repeatedly.
+        """
         if not self.contract:
             return 0
         latest_block = self.client.get_latest_block_number()
@@ -70,106 +77,65 @@ class EventIndexer:
             return 0
 
         session = SessionLocal()
-        event_count = 0
         try:
-            events = self.contract.events.LotRegistered().get_logs(fromBlock=from_block, toBlock=latest_block)
-            for e in events:
-                args = e.args
-                lot_id = args["lotId"]
-                existing = session.query(IndexedLot).filter_by(id=lot_id).first()
-                if not existing:
-                    session.add(IndexedLot(
-                        id=lot_id,
-                        owner=args["owner"],
-                        crop_id=args["cropId"],
-                        weight_g=args["weightG"],
-                        initial_weight_g=args["weightG"],
-                        parent_ids_json="[]"
-                    ))
-                self._record_audit(session, e, "LotRegistered", {
-                    "lotId": lot_id, "owner": args["owner"], "weightG": args["weightG"]
-                })
-                event_count += 1
+            # Clear only the derived SQLite read model. The chain remains
+            # unchanged; this makes an accidental stale cache recoverable.
+            session.query(IndexedAuditEvent).delete(synchronize_session=False)
+            session.query(IndexedGrade).delete(synchronize_session=False)
+            session.query(IndexedContract).delete(synchronize_session=False)
+            session.query(IndexedLot).delete(synchronize_session=False)
 
-            events = self.contract.events.LotTransferred().get_logs(fromBlock=from_block, toBlock=latest_block)
-            for e in events:
-                args = e.args
-                lot = session.query(IndexedLot).filter_by(id=args["lotId"]).first()
-                if lot:
-                    lot.owner = args["to"]
-                    lot.weight_g = args["receivedWeightG"]
-                    lot.loss_g += args["lossG"]
-                    lot.loss_reason = args["reason"]
-                    lot.status = "RECEIVED"
-                self._record_audit(session, e, "LotTransferred", {
-                    "lotId": args["lotId"], "from": args["from"], "to": args["to"],
-                    "receivedWeightG": args["receivedWeightG"], "lossG": args["lossG"]
-                })
-                event_count += 1
+            event_groups = {
+                "LotRegistered": self.contract.events.LotRegistered().get_logs(from_block=from_block, to_block=latest_block),
+                "LotTransferred": self.contract.events.LotTransferred().get_logs(from_block=from_block, to_block=latest_block),
+                "LotSplit": self.contract.events.LotSplit().get_logs(from_block=from_block, to_block=latest_block),
+                "GradeAttested": self.contract.events.GradeAttested().get_logs(from_block=from_block, to_block=latest_block),
+                "ContractCreated": self.contract.events.ContractCreated().get_logs(from_block=from_block, to_block=latest_block),
+            }
+            registration_weights = {
+                int(event.args["lotId"]): int(event.args["weightG"])
+                for event in event_groups["LotRegistered"]
+            }
+            parent_ids: dict[int, list[int]] = {}
+            for event in event_groups["LotSplit"]:
+                for child_id in event.args["childLotIds"]:
+                    parent_ids[int(child_id)] = [int(event.args["parentLotId"])]
 
-            events = self.contract.events.LotSplit().get_logs(fromBlock=from_block, toBlock=latest_block)
-            for e in events:
-                args = e.args
-                parent_id = args["parentLotId"]
-                parent = session.query(IndexedLot).filter_by(id=parent_id).first()
-                if parent:
-                    parent.status = "ALLOCATED"
-                    parent.weight_g = 0
-                for c_id in args["childLotIds"]:
-                    child = session.query(IndexedLot).filter_by(id=c_id).first()
-                    if not child and parent:
-                        session.add(IndexedLot(
-                            id=c_id,
-                            owner=parent.owner,
-                            crop_id=parent.crop_id,
-                            weight_g=0,
-                            initial_weight_g=0,
-                            parent_ids_json=json.dumps([parent_id]),
-                            grade_att_id=parent.grade_att_id,
-                            status="GRADED" if parent.grade_att_id else "CREATED"
-                        ))
-                self._record_audit(session, e, "LotSplit", {
-                    "parentLotId": parent_id, "childLotIds": list(args["childLotIds"]), "lossG": args["lossG"]
-                })
-                event_count += 1
+            statuses = ("CREATED", "IN_TRANSIT", "RECEIVED", "GRADED", "ALLOCATED", "SETTLED", "DISPUTED")
+            lot_count = int(self.contract.functions.lotCounter().call())
+            for lot_id in range(1, lot_count + 1):
+                lot = self.contract.functions.lots(lot_id).call()
+                current_weight = int(lot[3])
+                session.add(IndexedLot(
+                    id=int(lot[0]), owner=str(lot[1]), crop_id=str(lot[2]),
+                    weight_g=current_weight,
+                    initial_weight_g=registration_weights.get(lot_id, current_weight + int(lot[4])),
+                    loss_g=int(lot[4]), loss_reason=int(lot[5]), grade_att_id=int(lot[6]),
+                    status=statuses[int(lot[7])], allocated_weight_g=int(lot[8]),
+                    parent_ids_json=json.dumps(parent_ids.get(lot_id, [])),
+                ))
 
-            events = self.contract.events.GradeAttested().get_logs(fromBlock=from_block, toBlock=latest_block)
-            for e in events:
-                args = e.args
-                att_id = args["attestationId"]
-                lot_id = args["lotId"]
-                existing = session.query(IndexedGrade).filter_by(id=att_id).first()
-                if not existing:
-                    session.add(IndexedGrade(
-                        id=att_id,
-                        lot_id=lot_id,
-                        grade=args["grade"],
-                        evidence_cid=args["evidenceCid"]
-                    ))
-                lot = session.query(IndexedLot).filter_by(id=lot_id).first()
-                if lot:
-                    lot.grade_att_id = att_id
-                    lot.status = "GRADED"
-                self._record_audit(session, e, "GradeAttested", {
-                    "attestationId": att_id, "lotId": lot_id, "grade": args["grade"]
-                })
-                event_count += 1
+            for event in event_groups["GradeAttested"]:
+                args = event.args
+                session.add(IndexedGrade(
+                    id=int(args["attestationId"]), lot_id=int(args["lotId"]), grade=int(args["grade"]),
+                    evidence_cid=str(args["evidenceCid"]),
+                ))
 
-            events = self.contract.events.ContractCreated().get_logs(fromBlock=from_block, toBlock=latest_block)
-            for e in events:
-                args = e.args
-                c_id = args["contractId"]
-                if not session.query(IndexedContract).filter_by(id=c_id).first():
-                    session.add(IndexedContract(
-                        id=c_id,
-                        processor=args["processor"],
-                        crop_id=args["cropId"],
-                        qty_g=args["qtyG"]
-                    ))
-                self._record_audit(session, e, "ContractCreated", {
-                    "contractId": c_id, "cropId": args["cropId"], "qtyG": args["qtyG"]
-                })
-                event_count += 1
+            contract_count = int(self.contract.functions.contractCounter().call())
+            for contract_id in range(1, contract_count + 1):
+                contract = self.contract.functions.contracts(contract_id).call()
+                session.add(IndexedContract(
+                    id=int(contract[0]), processor=str(contract[1]), crop_id=str(contract[2]), qty_g=int(contract[3]),
+                    min_grade=int(contract[4]), base_price_paise=int(contract[5]),
+                    allocated_qty_g=int(contract[8]), active=bool(contract[9]),
+                ))
+
+            event_count = 0
+            for event_name, events in event_groups.items():
+                for event in events:
+                    self._record_audit(session, event, event_name, dict(event.args))
+                    event_count += 1
 
             session.commit()
             return event_count
@@ -186,7 +152,11 @@ class EventIndexer:
             block_number=event_obj.blockNumber,
             tx_hash=event_obj.transactionHash.hex(),
             event_name=name,
-            payload_json=json.dumps(payload, sort_keys=True),
+            payload_json=json.dumps(
+                payload,
+                sort_keys=True,
+                default=lambda value: value.hex() if isinstance(value, bytes) else str(value),
+            ),
             audit_head=head_hex
         ))
 

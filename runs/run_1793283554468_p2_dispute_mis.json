@@ -1,0 +1,50 @@
+{
+  "run_id": "run_1793283554468_p2_dispute_mis",
+  "timestamp": "2026-10-29T14:19:14.468012+00:00",
+  "problem_type": "P2_DISPUTE_MIS",
+  "n_vars": 13,
+  "solver": "ExactSolver_MIS",
+  "mode": "fallback_local",
+  "sdk_versions": {
+    "networkx": "3.6.1"
+  },
+  "seed": 42,
+  "params": {
+    "algorithm": "ExactMaximumWeightIndependentSet"
+  },
+  "job_id": "local_run_1793283554468_p2_dispute_mis",
+  "input_hash": "cfacce3a7ed92c1a3b569d0715612ee8c3d3eecd88695a16a0c47d0a79d1e2c8",
+  "request_summary": {
+    "n_claims": 13,
+    "n_conflicts": 10
+  },
+  "raw_output": {
+    "kept_count": 7,
+    "rejected_count": 6
+  },
+  "raw_error": null,
+  "decoded_solution": {
+    "kept_claim_ids": [
+      "CLM-003",
+      "CLM-004",
+      "CLM-006",
+      "CLM-007",
+      "CLM-010",
+      "CLM-012",
+      "CLM-013"
+    ],
+    "rejected_claim_ids": [
+      "CLM-008",
+      "CLM-011",
+      "CLM-009",
+      "CLM-002",
+      "CLM-005",
+      "CLM-001"
+    ]
+  },
+  "objective": 14005627.0,
+  "feasible": true,
+  "violations": [],
+  "optimality_gap_vs_exact": 0.0,
+  "runtime_ms": 11.180199915543199
+}

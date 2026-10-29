@@ -19,6 +19,7 @@ from solvers.p2_dispute import P2DisputeSolvers
 from solvers.p3_deduction import P3DeductionSolvers
 from solvers.qcloud_qaoa import QCloudQuantumSolver
 from chain.commit import commit_allocation_from_run, commit_dispute_resolution_from_run
+from api.datasets import claim_conflict_instance, dataset_summary, qaoa_qubo
 
 app = FastAPI(
     title="AgroTrace AI API",
@@ -40,12 +41,37 @@ def get_index():
 def get_health():
     return run_all_checks()
 
+
+@app.get("/datasets/summary")
+def get_dataset_summary():
+    """Expose the packaged benchmark dimensions without leaking raw fixtures."""
+    try:
+        return dataset_summary()
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
 @app.get("/lots")
 def get_lots():
-    indexer.sync_events()
+    # Keep the dashboard readable during a short local-node restart. If a
+    # previously indexed snapshot exists, it is safer to return it than fail
+    # the entire page with a 500; an empty cache still reports the real issue.
+    sync_error: Exception | None = None
+    try:
+        indexer.sync_events()
+    except Exception as error:
+        sync_error = error
     session = SessionLocal()
     try:
         lots = session.query(IndexedLot).all()
+        if sync_error and not lots:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Ledger is unavailable and no indexed lot snapshot exists: {sync_error}",
+            )
+        grade_by_lot = {
+            grade.lot_id: grade.grade
+            for grade in session.query(IndexedGrade).all()
+        }
         return [
             {
                 "id": l.id,
@@ -57,6 +83,7 @@ def get_lots():
                 "loss_reason": l.loss_reason,
                 "status": l.status,
                 "grade_att_id": l.grade_att_id,
+                "grade": grade_by_lot.get(l.id),
                 "parent_ids": json.loads(l.parent_ids_json or "[]")
             }
             for l in lots
@@ -111,7 +138,10 @@ def optimize_allocation(solver: str = "exact", commit: bool = False):
         elif solver == "qpiai_opt":
             run = P1AllocationSolvers.solve_qpiai_opt(lots, contracts)
         else:
-            run = QCloudQuantumSolver.run_qaoa({}, n_qubits=8)
+            raise HTTPException(
+                status_code=400,
+                detail="Supported allocation solvers: exact, anneal, qpiai_opt.",
+            )
 
         run.save()
         resp = run.to_dict()
@@ -150,12 +180,7 @@ def compare_solvers():
 
 @app.post("/disputes/resolve")
 def resolve_disputes(solver: str = "exact", lot_id: int = 2, commit: bool = False):
-    claims = [
-        {"id": 101, "amount_paise": 1920000, "lot_id": lot_id},
-        {"id": 102, "amount_paise": 1920000, "lot_id": lot_id},
-        {"id": 103, "amount_paise": 850000, "lot_id": 3}
-    ]
-    conflicts = [(101, 102)]
+    claims, conflicts = claim_conflict_instance()
 
     if solver == "exact":
         run = P2DisputeSolvers.solve_exact(claims, conflicts)
@@ -167,9 +192,13 @@ def resolve_disputes(solver: str = "exact", lot_id: int = 2, commit: bool = Fals
     run.save()
     resp = run.to_dict()
 
-    if commit and run.feasible:
-        commit_res = commit_dispute_resolution_from_run(run, lot_id=lot_id, client=client)
-        resp["commit_status"] = commit_res
+    if commit:
+        # The supplied benchmark uses off-chain string identifiers. A user must
+        # select a matching on-chain claim set before a commitment is permitted.
+        raise HTTPException(
+            status_code=400,
+            detail="Dataset dispute runs are simulation evidence and cannot be committed to the current demo chain.",
+        )
 
     return resp
 
@@ -178,15 +207,9 @@ def run_quantum_circuit(experiment: str = "bell_qrng"):
     if experiment == "bell_qrng":
         return QCloudQuantumSolver.run_qrng_bell_experiment(shots=1000)
     if experiment == "claim_conflict_qaoa":
-        # The same planted P2 conflict, reduced to two variables so that the
-        # QAOA experiment is small, reproducible, and domain-relevant.
-        run = QCloudQuantumSolver.run_qaoa(
-            {
-                ("claim_101", "claim_101"): -1.0,
-                ("claim_102", "claim_102"): -1.0,
-                ("claim_101", "claim_102"): 3.0,
-            }
-        )
+        # User-supplied 10-claim MIS QUBO: a relevant quantum experiment for
+        # choosing mutually compatible settlement claims.
+        run = QCloudQuantumSolver.run_qaoa(qaoa_qubo(), p_steps=1, shots=1024)
         run.save()
         return run.to_dict()
     raise HTTPException(status_code=400, detail="Supported experiments: bell_qrng, claim_conflict_qaoa")

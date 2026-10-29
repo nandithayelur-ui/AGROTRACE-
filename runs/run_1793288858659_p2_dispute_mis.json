@@ -1,0 +1,49 @@
+{
+  "run_id": "run_1793288858659_p2_dispute_mis",
+  "timestamp": "2026-10-29T15:47:38.659240+00:00",
+  "problem_type": "P2_DISPUTE_MIS",
+  "n_vars": 13,
+  "solver": "AnnealSolver_Neal_MIS",
+  "mode": "fallback_local",
+  "sdk_versions": {
+    "neal": "0.6.0"
+  },
+  "seed": 42,
+  "params": {
+    "num_reads": 100
+  },
+  "job_id": "local_run_1793288858659_p2_dispute_mis",
+  "input_hash": "cfacce3a7ed92c1a3b569d0715612ee8c3d3eecd88695a16a0c47d0a79d1e2c8",
+  "request_summary": {
+    "n_claims": 13,
+    "n_conflicts": 10
+  },
+  "raw_output": {
+    "energy": -2.6099395016832014
+  },
+  "raw_error": null,
+  "decoded_solution": {
+    "kept_claim_ids": [
+      "CLM-003",
+      "CLM-004",
+      "CLM-006",
+      "CLM-008",
+      "CLM-010",
+      "CLM-012",
+      "CLM-013"
+    ],
+    "rejected_claim_ids": [
+      "CLM-009",
+      "CLM-005",
+      "CLM-011",
+      "CLM-007",
+      "CLM-002",
+      "CLM-001"
+    ]
+  },
+  "objective": 14005627.0,
+  "feasible": true,
+  "violations": [],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 16.494100000045364
+}

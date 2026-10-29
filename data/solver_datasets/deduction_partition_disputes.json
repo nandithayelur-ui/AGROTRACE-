@@ -1,0 +1,239 @@
+[
+  {
+    "id": "DSP-001",
+    "lot_id": "LOT-2026-106",
+    "contract_id": "C-210",
+    "party_a": "U-GREENFEED",
+    "party_b": "U-WH2",
+    "items": [
+      {
+        "id": "DSP-001-I01",
+        "description": "Shortfall penalty (10 kg)",
+        "amount_paise": 2000
+      },
+      {
+        "id": "DSP-001-I02",
+        "description": "Transit moisture loss",
+        "amount_paise": 21800
+      },
+      {
+        "id": "DSP-001-I03",
+        "description": "Storage loss share",
+        "amount_paise": 15000
+      },
+      {
+        "id": "DSP-001-I04",
+        "description": "Re-bagging cost",
+        "amount_paise": 8800
+      },
+      {
+        "id": "DSP-001-I05",
+        "description": "Weighbridge re-test",
+        "amount_paise": 3300
+      },
+      {
+        "id": "DSP-001-I06",
+        "description": "Demurrage (2 days)",
+        "amount_paise": 12500
+      },
+      {
+        "id": "DSP-001-I07",
+        "description": "Cleaning cost",
+        "amount_paise": 4700
+      },
+      {
+        "id": "DSP-001-I08",
+        "description": "Handling charge",
+        "amount_paise": 9600
+      },
+      {
+        "id": "DSP-001-I09",
+        "description": "Fumigation",
+        "amount_paise": 27100
+      },
+      {
+        "id": "DSP-001-I10",
+        "description": "Sampling fee",
+        "amount_paise": 6300
+      }
+    ],
+    "total_paise": 111100,
+    "reference_exact_solution": {
+      "party_a_items": [
+        "DSP-001-I01",
+        "DSP-001-I02",
+        "DSP-001-I03",
+        "DSP-001-I04",
+        "DSP-001-I05",
+        "DSP-001-I07"
+      ],
+      "party_b_items": [
+        "DSP-001-I06",
+        "DSP-001-I08",
+        "DSP-001-I09",
+        "DSP-001-I10"
+      ],
+      "party_a_total_paise": 55600,
+      "party_b_total_paise": 55500,
+      "disparity_paise": 100
+    }
+  },
+  {
+    "id": "DSP-002",
+    "lot_id": "LOT-2026-104",
+    "contract_id": "C-208",
+    "party_a": "U-NANDI",
+    "party_b": "U-WH1",
+    "items": [
+      {
+        "id": "DSP-002-I01",
+        "description": "Transport loss 2 kg",
+        "amount_paise": 5600
+      },
+      {
+        "id": "DSP-002-I02",
+        "description": "Handling",
+        "amount_paise": 50000
+      },
+      {
+        "id": "DSP-002-I03",
+        "description": "Unloading delay",
+        "amount_paise": 18200
+      },
+      {
+        "id": "DSP-002-I04",
+        "description": "Re-weigh fee",
+        "amount_paise": 2500
+      },
+      {
+        "id": "DSP-002-I05",
+        "description": "Sampling fee",
+        "amount_paise": 4100
+      },
+      {
+        "id": "DSP-002-I06",
+        "description": "Gunny bag cost",
+        "amount_paise": 11800
+      },
+      {
+        "id": "DSP-002-I07",
+        "description": "Moisture adjustment",
+        "amount_paise": 14900
+      },
+      {
+        "id": "DSP-002-I08",
+        "description": "Storage rent",
+        "amount_paise": 20700
+      }
+    ],
+    "total_paise": 127800,
+    "reference_exact_solution": {
+      "party_a_items": [
+        "DSP-002-I02",
+        "DSP-002-I04",
+        "DSP-002-I06"
+      ],
+      "party_b_items": [
+        "DSP-002-I01",
+        "DSP-002-I03",
+        "DSP-002-I05",
+        "DSP-002-I07",
+        "DSP-002-I08"
+      ],
+      "party_a_total_paise": 64300,
+      "party_b_total_paise": 63500,
+      "disparity_paise": 800
+    }
+  },
+  {
+    "id": "DSP-003",
+    "lot_id": "LOT-2026-092",
+    "contract_id": "C-208",
+    "party_a": "U-SURESH",
+    "party_b": "U-WH2",
+    "items": [
+      {
+        "id": "DSP-003-I01",
+        "description": "Transport loss above tolerance (15 kg)",
+        "amount_paise": 42000
+      },
+      {
+        "id": "DSP-003-I02",
+        "description": "Moisture re-test",
+        "amount_paise": 3500
+      },
+      {
+        "id": "DSP-003-I03",
+        "description": "Extra drying cost",
+        "amount_paise": 26400
+      },
+      {
+        "id": "DSP-003-I04",
+        "description": "Truck waiting charge",
+        "amount_paise": 15800
+      },
+      {
+        "id": "DSP-003-I05",
+        "description": "Spillage at yard",
+        "amount_paise": 7200
+      },
+      {
+        "id": "DSP-003-I06",
+        "description": "Re-sorting labour",
+        "amount_paise": 12100
+      },
+      {
+        "id": "DSP-003-I07",
+        "description": "Bag replacement",
+        "amount_paise": 9300
+      },
+      {
+        "id": "DSP-003-I08",
+        "description": "Weighbridge fee",
+        "amount_paise": 2800
+      },
+      {
+        "id": "DSP-003-I09",
+        "description": "Insurance excess",
+        "amount_paise": 18600
+      },
+      {
+        "id": "DSP-003-I10",
+        "description": "Fumigation",
+        "amount_paise": 9900
+      },
+      {
+        "id": "DSP-003-I11",
+        "description": "Documentation fee",
+        "amount_paise": 1500
+      },
+      {
+        "id": "DSP-003-I12",
+        "description": "Quality sampling",
+        "amount_paise": 5200
+      }
+    ],
+    "total_paise": 154300,
+    "reference_exact_solution": {
+      "party_a_items": [
+        "DSP-003-I01",
+        "DSP-003-I04",
+        "DSP-003-I05",
+        "DSP-003-I06"
+      ],
+      "party_b_items": [
+        "DSP-003-I02",
+        "DSP-003-I03",
+        "DSP-003-I07",
+        "DSP-003-I08",
+        "DSP-003-I09",
+        "DSP-003-I10",
+        "DSP-003-I11",
+        "DSP-003-I12"
+      ],
+      "party_a_total_paise": 77100,
+      "party_b_total_paise": 77200,
+      "disparity_paise": 100
+    }
+  }
+]

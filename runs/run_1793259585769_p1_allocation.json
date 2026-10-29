@@ -1,0 +1,37 @@
+{
+  "run_id": "run_1793259585769_p1_allocation",
+  "timestamp": "2026-10-29T07:39:45.769542+00:00",
+  "problem_type": "P1_ALLOCATION",
+  "n_vars": 30,
+  "solver": "QpiAIOptSolver_QUBO",
+  "mode": "error",
+  "sdk_versions": {
+    "qpiai_opt": "detected"
+  },
+  "seed": 42,
+  "params": {
+    "penalty_weight": 10000.0
+  },
+  "job_id": "local_run_1793259585769_p1_allocation",
+  "input_hash": "8654dd70d36ba2e4b21d939af66d6b1a3f46c9bb8ae5b646816e2157baaa636f",
+  "request_summary": {
+    "n_vars": 30,
+    "n_lots": 10,
+    "n_contracts": 3,
+    "penalty_weight": 10000.0
+  },
+  "raw_output": null,
+  "raw_error": {
+    "code": "SERVER",
+    "http_status": 500,
+    "service": "opt",
+    "message": "QpiAI server error (RuntimeError): qpiai_opt SDK module not found.",
+    "hint": "Inspect SDK call payload"
+  },
+  "decoded_solution": {},
+  "objective": 0.0,
+  "feasible": true,
+  "violations": [],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 1504.7280000289902
+}

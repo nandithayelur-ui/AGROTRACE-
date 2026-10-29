@@ -1,0 +1,177 @@
+{
+  "description": "10-variable MIS QUBO (minimise). C(x) = -sum w_i x_i + P * sum_{(i,j) in E} x_i x_j. For QAOA p=1..2 on QCloud/simulator; compare to exact baseline.",
+  "variables": [
+    "CLM-001",
+    "CLM-002",
+    "CLM-003",
+    "CLM-005",
+    "CLM-006",
+    "CLM-007",
+    "CLM-008",
+    "CLM-009",
+    "CLM-010",
+    "CLM-011"
+  ],
+  "normalised_weights": [
+    0.073407,
+    0.073407,
+    0.07592,
+    0.090155,
+    0.242503,
+    0.075988,
+    0.075988,
+    0.042233,
+    0.064396,
+    0.186003
+  ],
+  "penalty_P": 0.252503,
+  "edges": [
+    [
+      "CLM-001",
+      "CLM-002"
+    ],
+    [
+      "CLM-001",
+      "CLM-003"
+    ],
+    [
+      "CLM-001",
+      "CLM-005"
+    ],
+    [
+      "CLM-002",
+      "CLM-003"
+    ],
+    [
+      "CLM-005",
+      "CLM-006"
+    ],
+    [
+      "CLM-006",
+      "CLM-009"
+    ],
+    [
+      "CLM-007",
+      "CLM-008"
+    ],
+    [
+      "CLM-010",
+      "CLM-011"
+    ]
+  ],
+  "Q_linear": [
+    [
+      0,
+      0,
+      -0.073407
+    ],
+    [
+      1,
+      1,
+      -0.073407
+    ],
+    [
+      2,
+      2,
+      -0.07592
+    ],
+    [
+      3,
+      3,
+      -0.090155
+    ],
+    [
+      4,
+      4,
+      -0.242503
+    ],
+    [
+      5,
+      5,
+      -0.075988
+    ],
+    [
+      6,
+      6,
+      -0.075988
+    ],
+    [
+      7,
+      7,
+      -0.042233
+    ],
+    [
+      8,
+      8,
+      -0.064396
+    ],
+    [
+      9,
+      9,
+      -0.186003
+    ]
+  ],
+  "Q_quadratic": [
+    [
+      0,
+      1,
+      0.252503
+    ],
+    [
+      0,
+      2,
+      0.252503
+    ],
+    [
+      0,
+      3,
+      0.252503
+    ],
+    [
+      1,
+      2,
+      0.252503
+    ],
+    [
+      3,
+      4,
+      0.252503
+    ],
+    [
+      4,
+      7,
+      0.252503
+    ],
+    [
+      5,
+      6,
+      0.252503
+    ],
+    [
+      8,
+      9,
+      0.252503
+    ]
+  ],
+  "exact_optimum": {
+    "bitstring": "0010101001",
+    "selected": [
+      "CLM-003",
+      "CLM-006",
+      "CLM-008",
+      "CLM-011"
+    ],
+    "qubo_value": -0.580414,
+    "value_paise": 12843765
+  },
+  "qaoa_config": {
+    "depths": [
+      1,
+      2
+    ],
+    "shots": 1024,
+    "metric": "approximation_ratio = (best feasible value found) / (exact optimum value)",
+    "pass_threshold": 0.9
+  },
+  "bitstring_order": "bit i corresponds to variables[i], left to right"
+}

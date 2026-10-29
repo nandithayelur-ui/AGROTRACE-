@@ -1,0 +1,112 @@
+[
+  {
+    "id": "RUN-001",
+    "problem": "P1_allocation",
+    "solver": "exact_local",
+    "mode": "fallback_local",
+    "timeout_s": 30,
+    "retries": 2,
+    "fixture": true,
+    "output": {
+      "problem": "P1_allocation",
+      "solver": "exact_local",
+      "allocation": [
+        {
+          "lot_id": "LOT-2026-097",
+          "contract_id": "C-211"
+        },
+        {
+          "lot_id": "LOT-2026-098",
+          "contract_id": "C-213"
+        },
+        {
+          "lot_id": "LOT-2026-100",
+          "contract_id": "C-211"
+        },
+        {
+          "lot_id": "LOT-2026-101",
+          "contract_id": "C-213"
+        },
+        {
+          "lot_id": "LOT-2026-102",
+          "contract_id": "C-212"
+        }
+      ],
+      "net_value_paise": 6711925,
+      "delivered_kg": {
+        "C-211": 1200,
+        "C-212": 1000,
+        "C-213": 937
+      }
+    },
+    "error": null,
+    "output_hash": "229c03fafc9ec85bcb5002428d624fdd1d3c85b901bcd94736fa8f741ab665b0",
+    "demo_cid": "bafybei-demo-229c03fafc9ec85b"
+  },
+  {
+    "id": "RUN-002",
+    "problem": "P2_claim_conflict",
+    "solver": "exact_local",
+    "mode": "fallback_local",
+    "timeout_s": 30,
+    "retries": 2,
+    "fixture": true,
+    "output": {
+      "problem": "P2_claim_conflict",
+      "solver": "exact_local",
+      "approve": [
+        "CLM-003",
+        "CLM-004",
+        "CLM-006",
+        "CLM-007",
+        "CLM-010",
+        "CLM-012",
+        "CLM-013"
+      ],
+      "reject": [
+        "CLM-001",
+        "CLM-002",
+        "CLM-005",
+        "CLM-008",
+        "CLM-009",
+        "CLM-011"
+      ],
+      "approved_value_paise": 14005627
+    },
+    "error": null,
+    "output_hash": "19e7c9c2c99213a062f5f5e4068f117befe6b20964f899f680058b70ef40ec2e",
+    "demo_cid": "bafybei-demo-19e7c9c2c99213a0"
+  },
+  {
+    "id": "RUN-003",
+    "problem": "P1_allocation",
+    "solver": "qpiai_opt",
+    "mode": "error",
+    "timeout_s": 30,
+    "retries": 2,
+    "fixture": true,
+    "output": null,
+    "error": {
+      "code": "QPIAI_OPT_API_KEY_MISSING",
+      "message": "Key not configured; no result produced. Local solver output must NOT be relabelled qpiai_real."
+    },
+    "output_hash": null,
+    "demo_cid": null
+  },
+  {
+    "id": "RUN-004",
+    "problem": "QAOA_claim_subgraph",
+    "solver": "qpiai_quantum",
+    "mode": "error",
+    "timeout_s": 30,
+    "retries": 2,
+    "fixture": true,
+    "output": null,
+    "error": {
+      "code": "QCLOUD_TIMEOUT",
+      "message": "Job exceeded 30 s; retries exhausted."
+    },
+    "output_hash": null,
+    "demo_cid": null
+  }
+]

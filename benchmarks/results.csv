@@ -1,0 +1,7 @@
+instance_lots,instance_contracts,solver,mode,n_vars,objective,gap_vs_exact_pct,feasible,runtime_ms
+5,3,ExactSolver_PuLP,fallback_local,15,16027.00,0.00%,True,0.41
+5,3,AnnealSolver_Neal,fallback_local,15,0.00,0.00%,False,21.24
+10,3,ExactSolver_PuLP,fallback_local,30,16027.00,0.00%,True,1.40
+10,3,AnnealSolver_Neal,fallback_local,30,0.00,0.00%,False,34.61
+20,3,ExactSolver_PuLP,fallback_local,60,16027.00,0.00%,True,757.16
+20,3,AnnealSolver_Neal,fallback_local,60,0.00,0.00%,False,72.84

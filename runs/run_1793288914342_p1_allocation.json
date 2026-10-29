@@ -1,0 +1,39 @@
+{
+  "run_id": "run_1793288914342_p1_allocation",
+  "timestamp": "2026-10-29T15:48:34.342627+00:00",
+  "problem_type": "P1_ALLOCATION",
+  "n_vars": 30,
+  "solver": "QpiAIOptSolver_QUBO",
+  "mode": "error",
+  "sdk_versions": {
+    "qpiai_opt": "detected"
+  },
+  "seed": 42,
+  "params": {
+    "penalty_weight": 10000.0
+  },
+  "job_id": "local_run_1793288914342_p1_allocation",
+  "input_hash": "8654dd70d36ba2e4b21d939af66d6b1a3f46c9bb8ae5b646816e2157baaa636f",
+  "request_summary": {
+    "n_vars": 30,
+    "n_lots": 10,
+    "n_contracts": 3,
+    "penalty_weight": 10000.0
+  },
+  "raw_output": null,
+  "raw_error": {
+    "code": "SERVER",
+    "http_status": 500,
+    "service": "opt",
+    "message": "QpiAI server error (RuntimeError): QpiAI Opt is not adapted yet. Install qpiai-opt in this environment, run scripts/probe_qpiai.py, then bind its verified QUBO submission method.",
+    "hint": "Inspect SDK call payload"
+  },
+  "decoded_solution": {},
+  "objective": 0.0,
+  "feasible": false,
+  "violations": [
+    "No verified QpiAI Opt result was returned."
+  ],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 1500.6814000000759
+}

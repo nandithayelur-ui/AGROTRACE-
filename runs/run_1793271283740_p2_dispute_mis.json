@@ -1,0 +1,33 @@
+{
+  "run_id": "run_1793271283740_p2_dispute_mis",
+  "timestamp": "2026-10-29T10:54:43.740590+00:00",
+  "problem_type": "P2_DISPUTE_MIS",
+  "n_vars": 3,
+  "solver": "QpiAIOptSolver_MIS",
+  "mode": "error",
+  "sdk_versions": {
+    "qpiai_opt": "detected"
+  },
+  "seed": 42,
+  "params": {},
+  "job_id": "local_run_1793271283740_p2_dispute_mis",
+  "input_hash": "d643a65ee1cbdb3c076900385d1b2cf01ff9ebf214e8b6bf75e30168026a1cd1",
+  "request_summary": {
+    "n_claims": 3,
+    "n_conflicts": 1
+  },
+  "raw_output": null,
+  "raw_error": {
+    "code": "SERVER",
+    "http_status": 500,
+    "service": "opt",
+    "message": "QpiAI server error (RuntimeError): qpiai_opt module not available.",
+    "hint": "Inspect SDK call payload"
+  },
+  "decoded_solution": {},
+  "objective": 0.0,
+  "feasible": true,
+  "violations": [],
+  "optimality_gap_vs_exact": null,
+  "runtime_ms": 1504.581700079143
+}

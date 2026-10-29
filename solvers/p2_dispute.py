@@ -1,12 +1,15 @@
 ﻿import time
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, Hashable, List, Tuple
+import itertools
 import networkx as nx
 import dimod
 import neal
 from solvers.base import SolverRun
 from solvers.qpiai_client import call_qpiai
 
-def build_claim_conflict_graph(claims: List[Dict[str, Any]], planted_conflicts: List[Tuple[int, int]]) -> nx.Graph:
+def build_claim_conflict_graph(
+    claims: List[Dict[str, Any]], planted_conflicts: List[Tuple[Hashable, Hashable]]
+) -> nx.Graph:
     """Builds conflict graph: nodes = claims (weight = amount), edge = legal/settlement conflict."""
     G = nx.Graph()
     for c in claims:
@@ -16,24 +19,26 @@ def build_claim_conflict_graph(claims: List[Dict[str, Any]], planted_conflicts: 
             G.add_edge(u, v)
     return G
 
-def build_mis_qubo(G: nx.Graph, penalty: float = 2.0) -> Tuple[Dict[Tuple[str, str], float], Dict[str, int]]:
+def build_mis_qubo(
+    graph: nx.Graph, penalty: float = 2.0
+) -> Tuple[Dict[Tuple[str, str], float], Dict[str, Hashable]]:
     """
     QUBO for Max Independent Set:
     Maximize sum_i (w_i * x_i) - penalty * sum_(u,v in E) (x_u * x_v)
     Minimizes: - sum_i w_i * x_i + penalty * sum_(u,v in E) x_u * x_v
     """
     Q: Dict[Tuple[str, str], float] = {}
-    var_map: Dict[str, int] = {}
-    max_amount = max([d["amount_paise"] for _, d in G.nodes(data=True)]) if len(G) > 0 else 1.0
+    var_map: Dict[str, Hashable] = {}
+    max_amount = max([d["amount_paise"] for _, d in graph.nodes(data=True)]) if len(graph) > 0 else 1.0
 
-    for n, d in G.nodes(data=True):
+    for n, d in graph.nodes(data=True):
         v = f"claim_{n}"
         var_map[v] = n
         norm_w = d["amount_paise"] / float(max_amount)
         Q[(v, v)] = -norm_w
 
     edge_penalty = penalty * 1.5
-    for u, v in G.edges():
+    for u, v in graph.edges():
         v1, v2 = f"claim_{u}", f"claim_{v}"
         pair = (v1, v2) if v1 <= v2 else (v2, v1)
         Q[pair] = edge_penalty
@@ -42,12 +47,24 @@ def build_mis_qubo(G: nx.Graph, penalty: float = 2.0) -> Tuple[Dict[Tuple[str, s
 
 class P2DisputeSolvers:
     @staticmethod
-    def solve_exact(claims: List[Dict[str, Any]], conflicts: List[Tuple[int, int]], seed: int = 42) -> SolverRun:
+    def solve_exact(
+        claims: List[Dict[str, Any]], conflicts: List[Tuple[Hashable, Hashable]], seed: int = 42
+    ) -> SolverRun:
         t0 = time.perf_counter()
         G = build_claim_conflict_graph(claims, conflicts)
 
-        # Classical Maximum Weight Independent Set via NetworkX / complement clique
-        kept_nodes = nx.maximal_independent_set(G, seed=seed)
+        # Exact maximum-weight independent set. The supplied benchmark contains
+        # 13 claims (2^13 subsets), so exhaustive evaluation stays quick and
+        # avoids falsely calling a merely maximal solution "exact".
+        nodes = list(G.nodes())
+        kept_nodes: tuple[Hashable, ...] = ()
+        best_value = -1
+        for subset_size in range(len(nodes) + 1):
+            for candidate in itertools.combinations(nodes, subset_size):
+                if all(not G.has_edge(left, right) for left, right in itertools.combinations(candidate, 2)):
+                    value = sum(G.nodes[node]["amount_paise"] for node in candidate)
+                    if value > best_value:
+                        kept_nodes, best_value = candidate, value
         all_nodes = set(G.nodes())
         rejected_nodes = list(all_nodes - set(kept_nodes))
 
@@ -60,7 +77,7 @@ class P2DisputeSolvers:
             solver="ExactSolver_MIS",
             mode="fallback_local",
             seed=seed,
-            params={"algorithm": "MaximalIndependentSet"},
+            params={"algorithm": "ExactMaximumWeightIndependentSet"},
             request_summary={"n_claims": len(claims), "n_conflicts": len(conflicts)},
             decoded_solution={"kept_claim_ids": kept_nodes, "rejected_claim_ids": rejected_nodes},
             objective=float(total_kept_amount),
@@ -73,7 +90,9 @@ class P2DisputeSolvers:
         )
 
     @staticmethod
-    def solve_anneal(claims: List[Dict[str, Any]], conflicts: List[Tuple[int, int]], seed: int = 42) -> SolverRun:
+    def solve_anneal(
+        claims: List[Dict[str, Any]], conflicts: List[Tuple[Hashable, Hashable]], seed: int = 42
+    ) -> SolverRun:
         t0 = time.perf_counter()
         G = build_claim_conflict_graph(claims, conflicts)
         Q, var_map = build_mis_qubo(G)
@@ -114,7 +133,9 @@ class P2DisputeSolvers:
         )
 
     @staticmethod
-    def solve_qpiai_opt(claims: List[Dict[str, Any]], conflicts: List[Tuple[int, int]], seed: int = 42) -> SolverRun:
+    def solve_qpiai_opt(
+        claims: List[Dict[str, Any]], conflicts: List[Tuple[Hashable, Hashable]], seed: int = 42
+    ) -> SolverRun:
         t0 = time.perf_counter()
         meta = {"n_claims": len(claims), "n_conflicts": len(conflicts)}
 
@@ -144,8 +165,8 @@ class P2DisputeSolvers:
             request_summary=meta,
             decoded_solution={},
             objective=0.0,
-            feasible=True,
-            violations=[],
+            feasible=False,
+            violations=["No verified QpiAI Opt result was returned."],
             runtime_ms=runtime,
             sdk_versions={"qpiai_opt": "detected"},
             raw_output=raw_out,
