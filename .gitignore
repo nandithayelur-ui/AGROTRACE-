@@ -1,7 +1,8 @@
-﻿.env
+.env
 .venv/
 venv/
 node_modules/
+frontend/node_modules/
 artifacts/
 cache/
 __pycache__/
@@ -9,5 +10,10 @@ __pycache__/
 *.db
 *.sqlite3
 local_cas/
-coverage/
-typechain-types/
+runs/*.json
+dist/
+.pytest_cache/
+*.egg-info/
+uv.lock
+src.zip
+logs/

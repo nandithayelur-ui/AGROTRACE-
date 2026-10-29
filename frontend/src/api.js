@@ -1,4 +1,4 @@
-﻿const BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8080";
+const BASE_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -18,6 +18,7 @@ export const agroApi = {
   getHealth: () => request("/health"),
   getLots: () => request("/lots"),
   getLineage: (lotId) => request(`/lots/${lotId}/lineage`),
+  getJourney: (lotId) => request(`/journey/${lotId}`),
   getReconcile: () => request("/reconcile"),
   getAuditVerify: () => request("/audit/verify"),
   compareSolvers: () => request("/optimize/compare"),
@@ -34,11 +35,27 @@ export const agroApi = {
     ),
 
   runQuantum: (experiment = "bell_qrng") =>
-    request(`/quantum/run?experiment=${experiment}`, {
-      method: "POST",
-    }),
+    request(`/quantum/run?experiment=${experiment}`, { method: "POST" }),
 
   getRuns: () => request("/runs"),
   getEvidence: (lotId) => request(`/evidence/${lotId}`),
   runAttack: (name) => request(`/attacks/${name}`, { method: "POST" }),
+
+  syncBatch: (records, anchor = true) =>
+    request("/sync/batch", {
+      method: "POST",
+      body: JSON.stringify({ records, anchor }),
+    }),
+
+  attestSigned: (payload) =>
+    request("/attest/signed", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  postLocation: (lotId, locationData) =>
+    request(`/lots/${lotId}/location`, {
+      method: "POST",
+      body: JSON.stringify(locationData),
+    }),
 };

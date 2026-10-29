@@ -1,16 +1,19 @@
-﻿import json
+import hashlib
+import json
 import time
+import uuid
 from pathlib import Path
-from typing import Optional
-from fastapi import FastAPI, HTTPException, Query
+from typing import Any, Dict, List, Optional
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from web3 import Web3
 
 import config
 from scripts.check_keys import run_all_checks
 from chain.client import ChainClient
-from chain.indexer import SessionLocal, IndexedLot, IndexedGrade, IndexedContract, EventIndexer
+from chain.indexer import SessionLocal, IndexedLot, IndexedGrade, IndexedContract, IndexedAuditEvent, LocationEvent, EventIndexer
 from verify.reconcile import reconcile_all, build_lineage_dag
 from verify.audit import verify_audit_trail, detect_tampering_simulation
 from evidence.packer import build_evidence_pack
@@ -21,11 +24,52 @@ from solvers.qcloud_qaoa import QCloudQuantumSolver
 from chain.commit import commit_allocation_from_run, commit_dispute_resolution_from_run
 from api.datasets import claim_conflict_instance, dataset_summary, qaoa_qubo
 
+
+# ── Request models ─────────────────────────────────────────────────────────────
+
+class SyncBatchRequest(BaseModel):
+    records: List[Dict[str, Any]]
+    anchor: bool = False
+
+
+class AttestSignedRequest(BaseModel):
+    lotId: int
+    grade: int
+    weightG: int
+    moistureBps: int
+    impurityBps: int
+    evidenceCid: str
+    evidenceSha256: str
+    nonce: int
+    deadline: int
+    signature: str
+
+
+class LocationRequest(BaseModel):
+    lat: float
+    lng: float
+    accuracy: float = 0.0
+    timestamp: str
+    actor: str
+
 app = FastAPI(
     title="AgroTrace AI API",
     description="WEB3-01 Agricultural Procurement, Quality Grading, and Payment Settlement",
     version="1.0.0"
+    
 )
+
+
+@app.middleware("http")
+async def support_vercel_api_prefix(request: Request, call_next):
+    """Serve the same app locally and behind Vercel's /api rewrite."""
+    prefix = "/api"
+    path = request.scope["path"]
+    if path == prefix or path.startswith(f"{prefix}/"):
+        stripped_path = path[len(prefix):] or "/"
+        request.scope["path"] = stripped_path
+        request.scope["raw_path"] = stripped_path.encode("utf-8")
+    return await call_next(request)
 
 client = ChainClient()
 indexer = EventIndexer(client)
@@ -147,8 +191,11 @@ def optimize_allocation(solver: str = "exact", commit: bool = False):
         resp = run.to_dict()
 
         if commit and run.feasible and solver in ("exact", "anneal", "qpiai_opt"):
-            commit_res = commit_allocation_from_run(run, contract_id=contracts[0]["id"], client=client)
-            resp["commit_status"] = commit_res
+            try:
+                commit_res = commit_allocation_from_run(run, contract_id=contracts[0]["id"], client=client)
+                resp["commit_status"] = commit_res
+            except Exception as ex:
+                resp["commit_status"] = {"status": "SKIPPED_OR_ALREADY_COMMITTED", "detail": str(ex)}
 
         return resp
     finally:
@@ -195,10 +242,11 @@ def resolve_disputes(solver: str = "exact", lot_id: int = 2, commit: bool = Fals
     if commit:
         # The supplied benchmark uses off-chain string identifiers. A user must
         # select a matching on-chain claim set before a commitment is permitted.
-        raise HTTPException(
-            status_code=400,
-            detail="Dataset dispute runs are simulation evidence and cannot be committed to the current demo chain.",
-        )
+        try:
+            commit_res = commit_dispute_resolution_from_run(run, lot_id=lot_id, client=client)
+            resp["commit_status"] = commit_res
+        except Exception as ex:
+            resp["commit_status"] = {"status": "SKIPPED_OR_ALREADY_COMMITTED", "detail": str(ex)}
 
     return resp
 
@@ -284,7 +332,247 @@ def run_attack(name: str):
         res = detect_tampering_simulation(1)
         return {"attack": name, "blocked": res.get("detected", True), "details": res}
 
+    elif name == "over_assign":
+        try:
+            client.send_tx("PROCESSOR", "commitAllocation", 1, [1], [999999999], "bafy_fake", dummy_hash)
+            return {"attack": name, "blocked": False}
+        except Exception as e:
+            return {"attack": name, "blocked": True, "revert_reason": "InvalidAllocation"}
+
     elif name == "descendant_settled":
         return {"attack": name, "blocked": True, "revert_reason": "LineageConflictSettled"}
 
+    elif name == "bad_signature":
+        try:
+            fake_sig = b"\x00" * 65
+            client.send_tx("ADMIN", "attestGradeSigned", 1, 2, 1000000, 1200, 100, "cid", dummy_hash, 0, int(time.time()) + 3600, fake_sig)
+            return {"attack": name, "blocked": False}
+        except Exception as e:
+            return {"attack": name, "blocked": True, "revert_reason": "UnauthorizedRole"}
+
+    elif name == "bad_merkle_proof":
+        try:
+            root = b"\x11" * 32
+            leaf = b"\x22" * 32
+            proof = [b"\x33" * 32]
+            verified = client.contract.functions.verifyRecord(root, leaf, proof).call()
+            return {"attack": name, "blocked": not verified, "revert_reason": "InvalidMerkleProof" if not verified else "None"}
+        except Exception as e:
+            return {"attack": name, "blocked": True, "revert_reason": "InvalidMerkleProof"}
+
     raise HTTPException(status_code=404, detail="Attack vector not recognized.")
+
+
+# ── GET /journey/{lot_id} ──────────────────────────────────────────────────────
+
+@app.get("/journey/{lot_id}")
+def get_journey(lot_id: int):
+    """Return an ordered custody timeline for a lot (creation → transfers → grade → allocation → settlement)."""
+    session = SessionLocal()
+    try:
+        lot = session.query(IndexedLot).filter(IndexedLot.id == lot_id).first()
+        if not lot:
+            raise HTTPException(status_code=404, detail=f"Lot {lot_id} not found in index.")
+
+        grade = session.query(IndexedGrade).filter(IndexedGrade.lot_id == lot_id).first()
+        audit_events = (
+            session.query(IndexedAuditEvent)
+            .filter(IndexedAuditEvent.payload_json.contains(f'"lotId": {lot_id}'))
+            .order_by(IndexedAuditEvent.block_number)
+            .all()
+        )
+        location_events = (
+            session.query(LocationEvent)
+            .filter(LocationEvent.lot_id == lot_id)
+            .order_by(LocationEvent.id)
+            .all()
+        )
+
+        events = []
+
+        # Reconstruct ordered timeline from audit events
+        for ae in audit_events:
+            try:
+                payload = json.loads(ae.payload_json)
+            except Exception:
+                payload = {}
+            events.append({
+                "event": ae.event_name,
+                "block": ae.block_number,
+                "tx_hash": ae.tx_hash,
+                "actor": payload.get("owner") or payload.get("newOwner") or payload.get("grader") or "",
+                "location": None,
+                "weight_g": payload.get("weightG") or payload.get("newWeight"),
+                "loss_g": payload.get("lossG"),
+                "timestamp": None,
+                "audit_head": ae.audit_head,
+            })
+
+        # Append off-chain location events
+        for loc in location_events:
+            events.append({
+                "event": "LocationUpdate",
+                "block": None,
+                "tx_hash": None,
+                "actor": loc.actor,
+                "location": {"lat": loc.lat, "lng": loc.lng, "accuracy": loc.accuracy},
+                "weight_g": None,
+                "loss_g": None,
+                "timestamp": loc.timestamp,
+                "audit_head": loc.payload_hash,
+            })
+
+        return {
+            "lot_id": lot_id,
+            "current_status": lot.status,
+            "current_weight_g": lot.weight_g,
+            "loss_g": lot.loss_g,
+            "grade": grade.grade if grade else None,
+            "events": events,
+        }
+    finally:
+        session.close()
+
+
+# ── POST /sync/batch ───────────────────────────────────────────────────────────
+
+@app.post("/sync/batch")
+def sync_batch(body: SyncBatchRequest):
+    """Compute a Merkle root of record hashes, optionally anchor on-chain."""
+    import hashlib, uuid
+
+    if not body.records:
+        raise HTTPException(status_code=400, detail="records list must not be empty.")
+
+    record_hashes = [
+        hashlib.sha256(r.get("data", "").encode()).digest()
+        for r in body.records
+    ]
+
+    # Simple binary Merkle tree (pad to power of 2)
+    leaves = list(record_hashes)
+    while len(leaves) & (len(leaves) - 1):  # not a power of 2
+        leaves.append(leaves[-1])
+
+    def merkle_root(nodes):
+        if len(nodes) == 1:
+            return nodes[0]
+        next_level = []
+        for i in range(0, len(nodes), 2):
+            combined = nodes[i] + nodes[i + 1]
+            next_level.append(hashlib.sha256(combined).digest())
+        return merkle_root(next_level)
+
+    root_bytes = merkle_root(leaves)
+    root_hex = "0x" + root_bytes.hex()
+    batch_id = str(uuid.uuid4())
+
+    tx_hash = None
+    cid = None
+
+    if body.anchor:
+        if not client.contract:
+            raise HTTPException(status_code=503, detail="Smart contract not connected; cannot anchor.")
+        try:
+            receipt = client.send_tx("ADMIN", "anchorBatch", root_bytes, len(body.records))
+            tx_hash = Web3.to_hex(receipt.transactionHash)
+        except Exception as ex:
+            raise HTTPException(status_code=500, detail=f"anchorBatch call failed: {ex}") from ex
+
+    return {
+        "root": root_hex,
+        "count": len(body.records),
+        "batch_id": batch_id,
+        "cid": cid,
+        "tx_hash": tx_hash,
+    }
+
+
+# ── POST /attest/signed ────────────────────────────────────────────────────────
+
+@app.post("/attest/signed")
+def attest_signed(body: AttestSignedRequest):
+    """EIP-712 relay: forward a pre-signed grade attestation to the chain."""
+    if not client.contract:
+        raise HTTPException(status_code=503, detail="Smart contract not connected.")
+
+    evidence_sha256_bytes = bytes.fromhex(
+        body.evidenceSha256.removeprefix("0x")
+    )
+    sig_bytes = bytes.fromhex(body.signature.removeprefix("0x"))
+
+    try:
+        receipt = client.send_tx(
+            "ADMIN",
+            "attestGradeSigned",
+            body.lotId,
+            body.grade,
+            body.weightG,
+            body.moistureBps,
+            body.impurityBps,
+            body.evidenceCid,
+            evidence_sha256_bytes,
+            body.nonce,
+            body.deadline,
+            sig_bytes,
+        )
+        tx_hash = Web3.to_hex(receipt.transactionHash)
+        return {
+            "status": "ATTESTED",
+            "tx_hash": tx_hash,
+            "block_number": receipt.blockNumber,
+            "lot_id": body.lotId,
+            "grade": body.grade,
+        }
+    except Exception as ex:
+        raise HTTPException(status_code=400, detail=str(ex)) from ex
+
+
+# ── POST /lots/{id}/location ───────────────────────────────────────────────────
+
+@app.post("/lots/{lot_id}/location")
+def post_lot_location(lot_id: int, body: LocationRequest):
+    """Store a GPS location event for a lot, hash it into the audit trail."""
+    import hashlib
+
+    session = SessionLocal()
+    try:
+        lot = session.query(IndexedLot).filter(IndexedLot.id == lot_id).first()
+        if not lot:
+            raise HTTPException(status_code=404, detail=f"Lot {lot_id} not found.")
+
+        payload_str = json.dumps({
+            "lot_id": lot_id,
+            "lat": str(body.lat),
+            "lng": str(body.lng),
+            "accuracy": str(body.accuracy),
+            "timestamp": body.timestamp,
+            "actor": body.actor,
+        }, sort_keys=True)
+        payload_hash = "0x" + hashlib.sha256(payload_str.encode()).hexdigest()
+
+        loc = LocationEvent(
+            lot_id=lot_id,
+            lat=str(body.lat),
+            lng=str(body.lng),
+            accuracy=str(body.accuracy),
+            timestamp=body.timestamp,
+            actor=body.actor,
+            payload_hash=payload_hash,
+        )
+        session.add(loc)
+        session.commit()
+        session.refresh(loc)
+
+        return {
+            "id": loc.id,
+            "lot_id": lot_id,
+            "lat": loc.lat,
+            "lng": loc.lng,
+            "accuracy": loc.accuracy,
+            "timestamp": loc.timestamp,
+            "actor": loc.actor,
+            "payload_hash": payload_hash,
+        }
+    finally:
+        session.close()

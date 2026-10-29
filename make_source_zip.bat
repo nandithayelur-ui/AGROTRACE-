@@ -1,0 +1,3 @@
+@echo off
+echo [INFO] Creating source ZIP (excluding secrets and generated files)...
+.venv\Scripts\python.exe scripts\make_zip.py

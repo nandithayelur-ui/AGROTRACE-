@@ -1,4 +1,9 @@
-﻿import json
+import sys
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+import json
 from pathlib import Path
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, BigInteger, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -44,6 +49,17 @@ class IndexedContract(Base):
     allocated_qty_g = Column(BigInteger, default=0)
     active = Column(Boolean, default=True)
 
+class LocationEvent(Base):
+    __tablename__ = "location_events"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lot_id = Column(Integer, nullable=False)
+    lat = Column(String(32), nullable=False)
+    lng = Column(String(32), nullable=False)
+    accuracy = Column(String(32), default="0")
+    timestamp = Column(String(64), nullable=False)
+    actor = Column(String(42), nullable=False)
+    payload_hash = Column(String(66))
+
 class IndexedAuditEvent(Base):
     __tablename__ = "audit_events"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -85,13 +101,21 @@ class EventIndexer:
             session.query(IndexedContract).delete(synchronize_session=False)
             session.query(IndexedLot).delete(synchronize_session=False)
 
-            event_groups = {
-                "LotRegistered": self.contract.events.LotRegistered().get_logs(from_block=from_block, to_block=latest_block),
-                "LotTransferred": self.contract.events.LotTransferred().get_logs(from_block=from_block, to_block=latest_block),
-                "LotSplit": self.contract.events.LotSplit().get_logs(from_block=from_block, to_block=latest_block),
-                "GradeAttested": self.contract.events.GradeAttested().get_logs(from_block=from_block, to_block=latest_block),
-                "ContractCreated": self.contract.events.ContractCreated().get_logs(from_block=from_block, to_block=latest_block),
-            }
+            event_names = [
+                "LotRegistered", "LotTransferred", "LotSplit", "LotsMerged",
+                "GradeAttested", "GradeAttestedSigned", "ContractCreated",
+                "AllocationCommitted", "ClaimSubmitted", "ClaimSettled",
+                "DisputeResolved", "BatchAnchored"
+            ]
+            event_groups = {}
+            for ename in event_names:
+                if hasattr(self.contract.events, ename):
+                    try:
+                        event_groups[ename] = getattr(self.contract.events, ename)().get_logs(from_block=from_block, to_block=latest_block)
+                    except Exception:
+                        event_groups[ename] = []
+                else:
+                    event_groups[ename] = []
             registration_weights = {
                 int(event.args["lotId"]): int(event.args["weightG"])
                 for event in event_groups["LotRegistered"]
@@ -131,11 +155,22 @@ class EventIndexer:
                     allocated_qty_g=int(contract[8]), active=bool(contract[9]),
                 ))
 
-            event_count = 0
+            all_events = []
             for event_name, events in event_groups.items():
                 for event in events:
-                    self._record_audit(session, event, event_name, dict(event.args))
-                    event_count += 1
+                    all_events.append((
+                        getattr(event, "blockNumber", 0),
+                        getattr(event, "transactionIndex", 0),
+                        getattr(event, "logIndex", 0),
+                        event_name,
+                        event
+                    ))
+            all_events.sort(key=lambda x: (x[0], x[1], x[2]))
+
+            event_count = 0
+            for _, _, _, event_name, event in all_events:
+                self._record_audit(session, event, event_name, dict(event.args))
+                event_count += 1
 
             session.commit()
             return event_count
@@ -150,7 +185,7 @@ class EventIndexer:
         head_hex = "0x" + head_val.hex() if isinstance(head_val, bytes) else str(head_val)
         session.add(IndexedAuditEvent(
             block_number=event_obj.blockNumber,
-            tx_hash=event_obj.transactionHash.hex(),
+            tx_hash=Web3.to_hex(event_obj.transactionHash),
             event_name=name,
             payload_json=json.dumps(
                 payload,

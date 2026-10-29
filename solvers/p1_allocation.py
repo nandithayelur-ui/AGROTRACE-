@@ -234,10 +234,27 @@ class P1AllocationSolvers:
         Q, var_map, meta = build_allocation_qubo(lots, contracts)
 
         def _sdk_call():
-            raise RuntimeError(
-                "QpiAI Opt is not adapted yet. Install qpiai-opt in this environment, "
-                "run scripts/probe_qpiai.py, then bind its verified QUBO submission method."
-            )
+            from qpiai_opt.opt_modeller import Model, Binary
+            from qpiai_opt.opt_solvers import Client, solve
+
+            m = Model("lot_allocation_qubo")
+            vars_dict = {}
+            for v_name in var_map:
+                b = Binary(v_name)
+                m.add_variable(b)
+                vars_dict[v_name] = b
+
+            terms = []
+            for (u, v), bias in Q.items():
+                if u == v:
+                    terms.append(bias * vars_dict[u])
+                else:
+                    terms.append(bias * vars_dict[u] * vars_dict[v])
+            m.minimize(sum(terms))
+
+            client = Client(api_key=config.QPIAI_OPT_API_KEY)
+            res = solve(m, client=client, mode="platform", allow_platform=True)
+            return {"solution": res.solution, "energy": getattr(res, "optimal_energy", 0.0)}
 
         raw_out, raw_err, mode = call_qpiai("opt", _sdk_call, meta)
         runtime = (time.perf_counter() - t0) * 1000.0

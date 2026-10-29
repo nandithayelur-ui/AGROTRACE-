@@ -2,8 +2,11 @@
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract AgroTrace is AccessControl {
+contract AgroTrace is AccessControl, EIP712 {
     bytes32 public constant FARMER_ROLE = keccak256("FARMER_ROLE");
     bytes32 public constant COLLECTOR_ROLE = keccak256("COLLECTOR_ROLE");
     bytes32 public constant WAREHOUSE_ROLE = keccak256("WAREHOUSE_ROLE");
@@ -105,6 +108,31 @@ contract AgroTrace is AccessControl {
     error InvalidAllocation(string reason);
     error ContractExpiredOrInactive();
 
+    // EIP-712 typed struct hash for grade attestation
+    bytes32 public constant ATTEST_TYPEHASH = keccak256(
+        "GradeAttest(uint256 lotId,uint8 grade,uint256 weightG,uint256 moistureBps,uint256 impurityBps,bytes32 evidenceSha256,uint256 nonce,uint256 deadline)"
+    );
+
+    // Merkle batch anchoring
+    struct MerkleBatch {
+        bytes32 root;
+        uint256 count;
+        string cid;
+        uint256 timestamp;
+        address submitter;
+    }
+    uint256 public batchCounter;
+    mapping(uint256 => MerkleBatch) public batches;
+
+    // EIP-712 nonces for signed attestation
+    mapping(address => uint256) public attestNonces;
+
+    error SignatureExpired(uint256 deadline, uint256 current);
+    error InvalidSignature();
+
+    event GradeAttestedSigned(uint256 indexed attestationId, uint256 indexed lotId, address indexed signer, bytes32 newAuditHead);
+    event BatchAnchored(uint256 indexed batchId, bytes32 root, uint256 count, string cid, bytes32 newAuditHead);
+
     event LotRegistered(uint256 indexed lotId, address indexed owner, string cropId, uint256 weightG, string location, bytes32 newAuditHead);
     event LotTransferred(uint256 indexed lotId, address indexed from, address indexed to, uint256 receivedWeightG, uint256 lossG, uint8 reason, bytes32 newAuditHead);
     event LotSplit(uint256 indexed parentLotId, uint256[] childLotIds, uint256 lossG, bytes32 newAuditHead);
@@ -116,7 +144,7 @@ contract AgroTrace is AccessControl {
     event ClaimSettled(uint256 indexed claimId, uint256 indexed lotId, uint256 amountPaise, bytes32 newAuditHead);
     event DisputeResolved(uint256 indexed lotId, uint256[] rejectedClaimIds, string solverRunCid, bytes32 newAuditHead);
 
-    constructor() {
+    constructor() EIP712("AgroTrace", "1") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         auditHead = keccak256(abi.encodePacked("AGROTRACE_GENESIS", block.chainid, address(this)));
     }
@@ -494,5 +522,86 @@ contract AgroTrace is AccessControl {
 
     function getAuditHead() external view returns (bytes32) {
         return auditHead;
+    }
+
+    /**
+     * @dev EIP-712 signed grade attestation. The inspector signs off-chain;
+     *      a relayer (backend) submits it. Replay-protected by nonce + deadline.
+     */
+    function attestGradeSigned(
+        uint256 lotId,
+        uint8 grade,
+        uint256 weightG,
+        uint256 moistureBps,
+        uint256 impurityBps,
+        string calldata evidenceCid,
+        bytes32 evidenceSha256,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external returns (uint256) {
+        if (block.timestamp > deadline) revert SignatureExpired(deadline, block.timestamp);
+
+        bytes32 structHash = keccak256(abi.encode(
+            ATTEST_TYPEHASH,
+            lotId, grade, weightG, moistureBps, impurityBps, evidenceSha256, nonce, deadline
+        ));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, signature);
+
+        if (!hasRole(GRADER_ROLE, signer)) revert UnauthorizedRole(GRADER_ROLE, signer);
+        if (attestNonces[signer] != nonce) revert NonceAlreadyUsed(signer, nonce);
+        attestNonces[signer]++;
+
+        Lot storage l = lots[lotId];
+        if (l.id == 0) revert LotNotFound(lotId);
+        if (l.gradeAttId != 0) revert GradeAlreadyAttested(lotId);
+
+        gradeCounter++;
+        uint256 attId = gradeCounter;
+
+        gradeAttestations[attId] = GradeAttestation({
+            id: attId,
+            lotId: lotId,
+            grade: grade,
+            moistureBps: moistureBps,
+            impurityBps: impurityBps,
+            evidenceCid: evidenceCid,
+            evidenceSha256: evidenceSha256,
+            grader: signer,
+            timestamp: block.timestamp
+        });
+
+        l.gradeAttId = attId;
+        l.status = LotStatus.GRADED;
+
+        bytes32 head = _updateAuditHead(keccak256(abi.encode(attId, lotId, grade, evidenceCid, evidenceSha256)));
+        emit GradeAttestedSigned(attId, lotId, signer, head);
+        return attId;
+    }
+
+    /**
+     * @dev Anchor a Merkle root of offline-batched field records.
+     */
+    function anchorBatch(bytes32 root, uint256 count, string calldata cid) external returns (uint256) {
+        batchCounter++;
+        uint256 bId = batchCounter;
+        batches[bId] = MerkleBatch({
+            root: root,
+            count: count,
+            cid: cid,
+            timestamp: block.timestamp,
+            submitter: msg.sender
+        });
+        bytes32 head = _updateAuditHead(keccak256(abi.encode(bId, root, count, cid)));
+        emit BatchAnchored(bId, root, count, cid, head);
+        return bId;
+    }
+
+    /**
+     * @dev Verify a field record was included in a previously anchored batch.
+     */
+    function verifyRecord(bytes32 root, bytes32 leaf, bytes32[] calldata proof) external pure returns (bool) {
+        return MerkleProof.verify(proof, root, leaf);
     }
 }

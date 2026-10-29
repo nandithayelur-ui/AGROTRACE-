@@ -15,7 +15,7 @@ def main():
 
     try:
         r = requests.get(f"{BASE_URL}/health", timeout=5).json()
-        opt_ok = r["services"]["qpiai_opt"]["status"] in ("OK", "MISSING")
+        opt_ok = r["services"]["qpiai_opt"]["status"] in ("OK", "CONFIGURED", "MISSING")
         chain_ok = r["services"]["chain"]["status"] == "OK"
         log_step("1. Health Endpoint & Services", opt_ok and chain_ok, f"Storage: {r['services']['evidence_storage']['storage']}")
     except Exception as e:
@@ -65,7 +65,7 @@ def main():
         log_step("8. P2 Dispute Resolution (MIS/MVC)", False, str(e))
 
     try:
-        r = requests.post(f"{BASE_URL}/quantum/run?experiment=bell_qrng", timeout=5).json()
+        r = requests.post(f"{BASE_URL}/quantum/run?experiment=bell_qrng", timeout=15).json()
         log_step("9. QCloud Quantum Experiment", r.get("status") == "COMPLETED", f"Fidelity: {r.get('fidelity')}")
     except Exception as e:
         log_step("9. QCloud Quantum Experiment", False, str(e))

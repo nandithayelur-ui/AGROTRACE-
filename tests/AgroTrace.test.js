@@ -144,8 +144,7 @@ describe("AgroTrace AI - Full Attack Test Suite & Cost Verification", function (
     await agroTrace.connect(graderKavitha).attestGrade(1, 2, 1200, 100, "bafy_cid_1", dummyEvidenceHash);
     await agroTrace.connect(farmerRavi).splitLot(1, [600000, 400000], 0, 0);
 
-    // 2. Child 2 is claimed and settled
-    await agroTrace.connect(graderKavitha).attestGrade(2, 2, 1200, 100, "bafy_cid_2", dummyEvidenceHash);
+    // 2. Child 2 inherits gradeAttId from parent; claim and settle it
     await agroTrace.connect(farmerRavi).submitClaim(201, 2, "INV-CHILD-2", 1800000, 1);
     await agroTrace.connect(admin).settle(201);
 
@@ -154,5 +153,65 @@ describe("AgroTrace AI - Full Attack Test Suite & Cost Verification", function (
       agroTrace.connect(farmerRavi).submitClaim(202, 1, "INV-PARENT-CONFLICT", 3000000, 2)
     ).to.be.revertedWithCustomError(agroTrace, "LineageConflictSettled")
       .withArgs(1, 2);
+  });
+
+  it("Attack 10: EIP-712 signed attestation by non-grader (Rejects with UnauthorizedRole)", async function () {
+    await agroTrace.connect(farmerRavi).registerLot("WHEAT", 1000000, "Mandya");
+    const network = await hre.ethers.provider.getNetwork();
+    const domain = {
+      name: "AgroTrace",
+      version: "1",
+      chainId: network.chainId,
+      verifyingContract: await agroTrace.getAddress(),
+    };
+    const types = {
+      GradeAttest: [
+        { name: "lotId", type: "uint256" },
+        { name: "grade", type: "uint8" },
+        { name: "weightG", type: "uint256" },
+        { name: "moistureBps", type: "uint256" },
+        { name: "impurityBps", type: "uint256" },
+        { name: "evidenceSha256", type: "bytes32" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint256" },
+      ],
+    };
+    const deadline = Math.floor(Date.now() / 1000) + 3600;
+    const value = {
+      lotId: 1,
+      grade: 2,
+      weightG: 1000000,
+      moistureBps: 1200,
+      impurityBps: 100,
+      evidenceSha256: dummyEvidenceHash,
+      nonce: 0,
+      deadline: deadline,
+    };
+
+    const signature = await farmerRavi.signTypedData(domain, types, value);
+
+    await expect(
+      agroTrace.connect(admin).attestGradeSigned(
+        1, 2, 1000000, 1200, 100, "bafy_signed_evidence", dummyEvidenceHash, 0, deadline, signature
+      )
+    ).to.be.revertedWithCustomError(agroTrace, "UnauthorizedRole")
+      .withArgs(GRADER_ROLE, farmerRavi.address);
+  });
+
+  it("Attack 11: Merkle batch invalid proof rejection", async function () {
+    const leaf1 = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("RECORD_1"));
+    const leaf2 = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("RECORD_2"));
+    const pair = BigInt(leaf1) < BigInt(leaf2) ? [leaf1, leaf2] : [leaf2, leaf1];
+    const computedRoot = hre.ethers.keccak256(hre.ethers.concat(pair));
+
+    await agroTrace.connect(admin).anchorBatch(computedRoot, 2, "bafy_merkle_cid");
+
+    const validProof = [leaf1 === pair[0] ? pair[1] : pair[0]];
+    const isVerified = await agroTrace.verifyRecord(computedRoot, leaf1, validProof);
+    expect(isVerified).to.be.true;
+
+    const fakeLeaf = hre.ethers.keccak256(hre.ethers.toUtf8Bytes("RECORD_FAKE"));
+    const isFakeVerified = await agroTrace.verifyRecord(computedRoot, fakeLeaf, validProof);
+    expect(isFakeVerified).to.be.false;
   });
 });

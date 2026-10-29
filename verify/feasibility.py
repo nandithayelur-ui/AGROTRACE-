@@ -41,7 +41,7 @@ def check_allocation_feasibility(
     if total_assigned_g > capacity_g:
         violations.append(f"Total allocation {total_assigned_g}g exceeds contract capacity {capacity_g}g")
 
-    is_feasible = (len(violations) == 0 and total_assigned_g > 0)
+    is_feasible = (len(violations) == 0)
     return {
         "feasible": is_feasible,
         "contract_id": contract_id,

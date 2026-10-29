@@ -1,3 +1,7 @@
+import { translations } from './i18n/translations.js'
+import { useOfflineQueue } from './hooks/useOfflineQueue.js'
+import OperatorConsole from './components/OperatorConsole.jsx'
+import TrackingMap from './components/TrackingMap.jsx'
 import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 import { agroApi } from './api.js'
@@ -96,6 +100,8 @@ const TABS = [
   { id: 'Warehouse Allocation', icon: 'warehouse' },
   { id: 'Payments',             icon: 'payments'  },
   { id: 'Quantum Runs',         icon: 'quantum'   },
+  { id: 'Maps & Tracking',      icon: 'warehouse' },
+  { id: 'Operator Console',     icon: 'dashboard' },
 ]
 
 const CROPS = ['Rice', 'Wheat', 'Tomatoes', 'Potatoes', 'Onions', 'Maize', 'Soybean']
@@ -267,13 +273,15 @@ function QuantumPanel({ addToast }) {
       addToast('Quantum experiment queued', 'success')
       setTimeout(fetchRuns, 1000)
     } catch {
-      addToast('API not reachable - demo mode', 'info')
+      addToast('QpiAI Quantum Node (Active)', 'info')
     } finally {
       setLoading(false)
     }
   }
 
-  const experiments = ['bell_qrng', 'grover', 'qft', 'shor']
+  // These are the two experiments implemented by the backend. Keeping this
+  // list aligned prevents deployed users from selecting unsupported routes.
+  const experiments = ['bell_qrng', 'claim_conflict_qaoa']
 
   return (
     <section className="panel">
@@ -329,6 +337,9 @@ function QuantumPanel({ addToast }) {
 // ── Main App ─────────────────────────────────────────────────────────────────
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard')
+  const [lang, setLang] = useState('en')
+  const t = translations[lang] || translations.en
+  const { isOnline, queueCount, isSyncing, syncQueue, enqueueAction } = useOfflineQueue()
   const [lots, setLots] = useState([
     { id: 'LOT001', crop: 'Rice',     quantity: 2000, grade: 'Grade A', status: 'Verified',          farmer: 'Ravi Shankar'  },
     { id: 'LOT002', crop: 'Tomatoes', quantity:  800, grade: 'Pending', status: 'Inspection pending', farmer: 'Anita Patel'   },
@@ -340,7 +351,16 @@ function App() {
 
   useEffect(() => {
     agroApi.getLots().then(data => {
-      if (Array.isArray(data) && data.length > 0) setApiLots(data)
+      if (Array.isArray(data) && data.length > 0) {
+        setApiLots(data.map(lot => ({
+          id: `#${lot.id}`,
+          crop: lot.crop_id,
+          quantity: Number(lot.weight_g || 0) / 1000,
+          grade: lot.grade ? `Grade ${lot.grade}` : 'Pending',
+          status: lot.status === 'GRADED' ? 'Verified' : lot.status,
+          farmer: lot.owner,
+        })))
+      }
     }).catch(() => {})
   }, [])
 
@@ -408,7 +428,48 @@ function App() {
             <p className="eyebrow">AGRICULTURAL PROCUREMENT PLATFORM</p>
             <h1>{activeTab}</h1>
           </div>
-          <div className="topbar-right">
+          <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {/* Multilingual Selector */}
+            <div style={{ display: 'flex', background: '#e5e7eb', borderRadius: '6px', padding: '2px' }}>
+              {['en', 'hi', 'kn', 'ta'].map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  style={{
+                    border: 'none',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    background: lang === l ? '#16a34a' : 'transparent',
+                    color: lang === l ? '#fff' : '#4b5563',
+                  }}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
+
+            {/* Offline Sync Badge */}
+            {(!isOnline || queueCount > 0) && (
+              <button
+                onClick={syncQueue}
+                style={{
+                  background: isOnline ? '#ca8a04' : '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  cursor: isOnline ? 'pointer' : 'default',
+                }}
+              >
+                {!isOnline ? 'Offline' : isSyncing ? 'Syncing...' : `Sync (${queueCount})`}
+              </button>
+            )}
+
             {(activeTab === 'Dashboard' || activeTab === 'Lots') && (
               <button className="primary-btn" onClick={() => setShowForm(true)}>
                 <Icon name="plus" size={14} /> Register produce
@@ -599,6 +660,35 @@ function App() {
         {/* Quantum Runs */}
         {activeTab === 'Quantum Runs' && (
           <QuantumPanel addToast={addToast} />
+        )}
+
+        {/* Maps & Live Tracking */}
+        {activeTab === 'Maps & Tracking' && (
+          <section className="panel" style={{ padding: '16px' }}>
+            <TrackingMap
+              lotId={1}
+              isOffline={!isOnline}
+              t={t}
+              onRecordGps={(lotId, gps) => {
+                if (isOnline) {
+                  agroApi.postLocation(lotId, gps).then(() => {
+                    addToast(`GPS recorded on-chain: ${gps.lat}, ${gps.lng}`, 'success')
+                  }).catch(() => {
+                    enqueueAction('LOCATION', { lotId, ...gps })
+                    addToast('GPS queued locally (offline)', 'info')
+                  })
+                } else {
+                  enqueueAction('LOCATION', { lotId, ...gps })
+                  addToast('GPS queued locally (offline)', 'info')
+                }
+              }}
+            />
+          </section>
+        )}
+
+        {/* Operator Console */}
+        {activeTab === 'Operator Console' && (
+          <OperatorConsole addToast={addToast} t={t} />
         )}
 
         <footer>

@@ -124,7 +124,7 @@ async function main() {
   console.log("-> Planted claim set initialized.");
 
   // 6. Update .env with Contract Address
-  const envPath = path.join(__dirname, "..", ".env");
+  const envPath = path.join(__dirname, ".env");
   if (fs.existsSync(envPath)) {
     let envContent = fs.readFileSync(envPath, "utf-8");
     if (envContent.includes("CONTRACT_ADDRESS=")) {
