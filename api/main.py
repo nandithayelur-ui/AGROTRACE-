@@ -30,6 +30,7 @@ client = ChainClient()
 indexer = EventIndexer(client)
 
 app.mount("/static", StaticFiles(directory=str(config.BASE_DIR / "static")), name="static")
+app.mount("/docs-assets", StaticFiles(directory=str(config.BASE_DIR / "docs")), name="docs-assets")
 
 @app.get("/")
 def get_index():
@@ -176,10 +177,19 @@ def resolve_disputes(solver: str = "exact", lot_id: int = 2, commit: bool = Fals
 def run_quantum_circuit(experiment: str = "bell_qrng"):
     if experiment == "bell_qrng":
         return QCloudQuantumSolver.run_qrng_bell_experiment(shots=1000)
-    else:
-        run = QCloudQuantumSolver.run_qaoa({}, n_qubits=8)
+    if experiment == "claim_conflict_qaoa":
+        # The same planted P2 conflict, reduced to two variables so that the
+        # QAOA experiment is small, reproducible, and domain-relevant.
+        run = QCloudQuantumSolver.run_qaoa(
+            {
+                ("claim_101", "claim_101"): -1.0,
+                ("claim_102", "claim_102"): -1.0,
+                ("claim_101", "claim_102"): 3.0,
+            }
+        )
         run.save()
         return run.to_dict()
+    raise HTTPException(status_code=400, detail="Supported experiments: bell_qrng, claim_conflict_qaoa")
 
 @app.get("/runs")
 def list_runs():

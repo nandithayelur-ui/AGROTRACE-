@@ -128,6 +128,10 @@ def inspect_module_tree(root_name: str):
 
 
 def main():
+    # Windows terminals commonly default to cp1252, while SDK docs and
+    # annotations may include Unicode. Keep this diagnostic usable everywhere.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print(f"Python Version: {sys.version}")
     dists = find_qpiai_distributions()
     roots = discover_root_modules(dists)

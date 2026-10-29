@@ -12,10 +12,12 @@ from chain.client import ChainClient
 
 def run_all_checks() -> dict:
     opt_key = config.QPIAI_OPT_API_KEY
-    opt_status = "OK" if opt_key else "MISSING"
+    # A locally present key is configuration, not evidence of a successful
+    # authenticated provider run. Actual solver calls record that separately.
+    opt_status = "CONFIGURED" if opt_key else "MISSING"
 
     qcloud_key = config.QPIAI_QCLOUD_API_KEY
-    qcloud_status = "OK" if qcloud_key else "MISSING"
+    qcloud_status = "CONFIGURED" if qcloud_key else "MISSING"
 
     client = ChainClient()
     chain_ok = client.is_connected()
